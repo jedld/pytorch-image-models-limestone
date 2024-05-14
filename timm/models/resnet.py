@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from limestone_blocks.blocks import AutoConv2d, Limestone
+from limestone_blocks.blocks import AutoConv2d, Limestone, AutoBatchNorm2d
 
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.layers import DropBlock2d, DropPath, AvgPool2dSame, BlurPool2d, GroupNorm, LayerType, create_attn, \
@@ -56,7 +56,7 @@ class BasicBlock(nn.Module):
             dilation: int = 1,
             first_dilation: Optional[int] = None,
             act_layer: Type[nn.Module] = nn.ReLU,
-            norm_layer: Type[nn.Module] = nn.BatchNorm2d,
+            norm_layer: Type[nn.Module] = AutoBatchNorm2d,
             attn_layer: Optional[Type[nn.Module]] = None,
             aa_layer: Optional[Type[nn.Module]] = None,
             drop_block: Optional[Type[nn.Module]] = None,
@@ -154,7 +154,7 @@ class Bottleneck(nn.Module):
             dilation: int = 1,
             first_dilation: Optional[int] = None,
             act_layer: Type[nn.Module] = nn.ReLU,
-            norm_layer: Type[nn.Module] = nn.BatchNorm2d,
+            norm_layer: Type[nn.Module] = AutoBatchNorm2d,
             attn_layer: Optional[Type[nn.Module]] = None,
             aa_layer: Optional[Type[nn.Module]] = None,
             drop_block: Optional[Type[nn.Module]] = None,
@@ -252,7 +252,7 @@ def downsample_conv(
         first_dilation: Optional[int] = None,
         norm_layer: Optional[Type[nn.Module]] = None,
 ) -> nn.Module:
-    norm_layer = norm_layer or nn.BatchNorm2d
+    norm_layer = norm_layer or AutoBatchNorm2d
     kernel_size = 1 if stride == 1 and dilation == 1 else kernel_size
     first_dilation = (first_dilation or dilation) if kernel_size > 1 else 1
     p = get_padding(kernel_size, stride, first_dilation)
@@ -273,7 +273,7 @@ def downsample_avg(
         first_dilation: Optional[int] = None,
         norm_layer: Optional[Type[nn.Module]] = None,
 ) -> nn.Module:
-    norm_layer = norm_layer or nn.BatchNorm2d
+    norm_layer = norm_layer or AutoBatchNorm2d
     avg_stride = stride if dilation == 1 else 1
     if stride == 1 and dilation == 1:
         pool = nn.Identity()
@@ -410,7 +410,7 @@ class ResNet(Limestone):
             down_kernel_size: int = 1,
             avg_down: bool = False,
             act_layer: LayerType = nn.ReLU,
-            norm_layer: LayerType = nn.BatchNorm2d,
+            norm_layer: LayerType = AutoBatchNorm2d,
             aa_layer: Optional[Type[nn.Module]] = None,
             drop_rate: float = 0.0,
             drop_path_rate: float = 0.,
