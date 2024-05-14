@@ -39,6 +39,8 @@ from timm.models import create_model, safe_model_name, resume_checkpoint, load_c
 from timm.optim import create_optimizer_v2, optimizer_kwargs
 from timm.scheduler import create_scheduler_v2, scheduler_kwargs
 from timm.utils import ApexScaler, NativeScaler
+from limestone_blocks.trainer import SelectorCriterion
+from limestone_blocks.blocks import Limestone
 
 try:
     from apex import amp
@@ -498,8 +500,14 @@ def main():
         model.set_grad_checkpointing(enable=True)
 
     if utils.is_primary(args):
-        _logger.info(
-            f'Model {safe_model_name(args.model)} created, param count:{sum([m.numel() for m in model.parameters()])}')
+        if isinstance(model, Limestone):
+            weight_parameters, selector_parameters = model.parameters()
+            weight_parameters = weight_parameters['params']
+            selector_parameters = selector_parameters['params']
+            _logger.info(f'Model: {safe_model_name(args.model)} created, param count:{sum([m.numel() for m in weight_parameters])} selectors {sum([m.numel() for m in selector_parameters])}')
+        else:
+            _logger.info(
+                f'Model {safe_model_name(args.model)} created, param count:{sum([m.numel() for m in model.parameters()])}')
 
     data_config = resolve_data_config(vars(args), model=model, verbose=utils.is_primary(args))
 
@@ -783,6 +791,13 @@ def main():
     train_loss_fn = train_loss_fn.to(device=device)
     validate_loss_fn = nn.CrossEntropyLoss().to(device=device)
 
+    if isinstance(model, Limestone):
+        # Limestone model has a custom loss function
+        selector_criterion = SelectorCriterion(model, train_loss_fn).to(device=device)
+        train_loss_fn = selector_criterion
+    else:
+        selector_criterion = None
+
     # setup checkpoint saver and eval metric tracking
     eval_metric = args.eval_metric if loader_eval is not None else 'loss'
     decreasing_metric = eval_metric == 'loss'
@@ -927,6 +942,10 @@ def main():
                 # step LR for next epoch
                 lr_scheduler.step(epoch + 1, latest_metric)
 
+            if selector_criterion is not None:
+                print("selector increment")
+                selector_criterion.step()
+                
             results.append({
                 'epoch': epoch,
                 'train': train_metrics,

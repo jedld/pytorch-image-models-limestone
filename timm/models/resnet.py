@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from limestone_blocks.blocks import AutoConv2d, Limestone
 
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.layers import DropBlock2d, DropPath, AvgPool2dSame, BlurPool2d, GroupNorm, LayerType, create_attn, \
@@ -88,7 +89,7 @@ class BasicBlock(nn.Module):
         first_dilation = first_dilation or dilation
         use_aa = aa_layer is not None and (stride == 2 or first_dilation != dilation)
 
-        self.conv1 = nn.Conv2d(
+        self.conv1 = AutoConv2d(
             inplanes, first_planes, kernel_size=3, stride=1 if use_aa else stride, padding=first_dilation,
             dilation=first_dilation, bias=False)
         self.bn1 = norm_layer(first_planes)
@@ -96,7 +97,7 @@ class BasicBlock(nn.Module):
         self.act1 = act_layer(inplace=True)
         self.aa = create_aa(aa_layer, channels=first_planes, stride=stride, enable=use_aa)
 
-        self.conv2 = nn.Conv2d(
+        self.conv2 = AutoConv2d(
             first_planes, outplanes, kernel_size=3, padding=dilation, dilation=dilation, bias=False)
         self.bn2 = norm_layer(outplanes)
 
@@ -185,11 +186,11 @@ class Bottleneck(nn.Module):
         first_dilation = first_dilation or dilation
         use_aa = aa_layer is not None and (stride == 2 or first_dilation != dilation)
 
-        self.conv1 = nn.Conv2d(inplanes, first_planes, kernel_size=1, bias=False)
+        self.conv1 = AutoConv2d(inplanes, first_planes, kernel_size=1, bias=False)
         self.bn1 = norm_layer(first_planes)
         self.act1 = act_layer(inplace=True)
 
-        self.conv2 = nn.Conv2d(
+        self.conv2 = AutoConv2d(
             first_planes, width, kernel_size=3, stride=1 if use_aa else stride,
             padding=first_dilation, dilation=first_dilation, groups=cardinality, bias=False)
         self.bn2 = norm_layer(width)
@@ -197,7 +198,7 @@ class Bottleneck(nn.Module):
         self.act2 = act_layer(inplace=True)
         self.aa = create_aa(aa_layer, channels=width, stride=stride, enable=use_aa)
 
-        self.conv3 = nn.Conv2d(width, outplanes, kernel_size=1, bias=False)
+        self.conv3 = AutoConv2d(width, outplanes, kernel_size=1, bias=False)
         self.bn3 = norm_layer(outplanes)
 
         self.se = create_attn(attn_layer, outplanes)
@@ -360,7 +361,7 @@ def make_blocks(
     return stages, feature_info
 
 
-class ResNet(nn.Module):
+class ResNet(Limestone):
     """ResNet / ResNeXt / SE-ResNeXt / SE-Net
 
     This class implements all variants of ResNet, ResNeXt, SE-ResNeXt, and SENet that
@@ -465,15 +466,15 @@ class ResNet(nn.Module):
             if 'tiered' in stem_type:
                 stem_chs = (3 * (stem_width // 4), stem_width)
             self.conv1 = nn.Sequential(*[
-                nn.Conv2d(in_chans, stem_chs[0], 3, stride=2, padding=1, bias=False),
+                AutoConv2d(in_chans, stem_chs[0], 3, stride=2, padding=1, bias=False),
                 norm_layer(stem_chs[0]),
                 act_layer(inplace=True),
-                nn.Conv2d(stem_chs[0], stem_chs[1], 3, stride=1, padding=1, bias=False),
+                AutoConv2d(stem_chs[0], stem_chs[1], 3, stride=1, padding=1, bias=False),
                 norm_layer(stem_chs[1]),
                 act_layer(inplace=True),
-                nn.Conv2d(stem_chs[1], inplanes, 3, stride=1, padding=1, bias=False)])
+                AutoConv2d(stem_chs[1], inplanes, 3, stride=1, padding=1, bias=False)])
         else:
-            self.conv1 = nn.Conv2d(in_chans, inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+            self.conv1 = AutoConv2d(in_chans, inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(inplanes)
         self.act1 = act_layer(inplace=True)
         self.feature_info = [dict(num_chs=inplanes, reduction=2, module='act1')]
@@ -481,7 +482,7 @@ class ResNet(nn.Module):
         # Stem pooling. The name 'maxpool' remains for weight compatibility.
         if replace_stem_pool:
             self.maxpool = nn.Sequential(*filter(None, [
-                nn.Conv2d(inplanes, inplanes, 3, stride=1 if aa_layer else 2, padding=1, bias=False),
+                AutoConv2d(inplanes, inplanes, 3, stride=1 if aa_layer else 2, padding=1, bias=False),
                 create_aa(aa_layer, channels=inplanes, stride=2) if aa_layer is not None else None,
                 norm_layer(inplanes),
                 act_layer(inplace=True),
