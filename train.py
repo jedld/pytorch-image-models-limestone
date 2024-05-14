@@ -30,6 +30,7 @@ import torch.nn as nn
 import torchvision.utils
 import yaml
 from torch.nn.parallel import DistributedDataParallel as NativeDDP
+from torchsummary import summary
 
 from timm import utils
 from timm.data import create_dataset, create_loader, resolve_data_config, Mixup, FastCollateMixup, AugMixDataset
@@ -485,6 +486,9 @@ def main():
         **factory_kwargs,
         **args.model_kwargs,
     )
+
+    summary(model, (3, 224, 224))
+    
     if args.head_init_scale is not None:
         with torch.no_grad():
             model.get_classifier().weight.mul_(args.head_init_scale)
@@ -944,7 +948,7 @@ def main():
 
             if selector_criterion is not None:
                 print("selector increment")
-                selector_criterion.step()
+                selector_criterion.step(eval_metrics['loss'])
                 
             results.append({
                 'epoch': epoch,
