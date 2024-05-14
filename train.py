@@ -528,7 +528,7 @@ def main():
 
     # move model to GPU, enable channels last layout if set
     model.to(device=device)
-    
+
     summary(model, (3, 224, 224))
     if args.channels_last:
         model.to(memory_format=torch.channels_last)
@@ -799,7 +799,7 @@ def main():
 
     if isinstance(model, Limestone):
         # Limestone model has a custom loss function
-        selector_criterion = SelectorCriterion(model, train_loss_fn).to(device=device)
+        selector_criterion = SelectorCriterion(model, train_loss_fn, wandb=wandb).to(device=device)
         train_loss_fn = selector_criterion
     else:
         selector_criterion = None
