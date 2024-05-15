@@ -214,6 +214,8 @@ group.add_argument('--limestone-beta', type=float, default=0.2,
                    help='Beta for limestone selector criterion')
 group.add_argument('--limestone-warmup-epochs', type=int, default=10,
                    help='Warmup epochs for limestone selector criterion')
+group.add_argument('--limestone-freeze', action='store_true', default=False,
+                   help='Freeze limestone selector criterion')
 
 # Learning rate schedule parameters
 group = parser.add_argument_group('Learning rate schedule parameters')
@@ -806,6 +808,8 @@ def main():
         # Limestone model has a custom loss function
         selector_criterion = SelectorCriterion(model, train_loss_fn, 
                                                 beta=args.limestone_beta,
+                                                warmup_epochs=args.limestone_warmup_epochs,
+                                                freeze_selectors=args.limestone_freeze,
                                                 wandb=wandb).to(device=device)
         train_loss_fn = selector_criterion
     else:
