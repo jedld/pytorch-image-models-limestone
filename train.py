@@ -212,6 +212,8 @@ group.add_argument('--opt-kwargs', nargs='*', default={}, action=utils.ParseKwar
 
 group.add_argument('--limestone-beta', type=float, default=0.2,
                    help='Beta for limestone selector criterion')
+group.add_argument('--limestone-warmup-epochs', type=int, default=10,
+                   help='Warmup epochs for limestone selector criterion')
 
 # Learning rate schedule parameters
 group = parser.add_argument_group('Learning rate schedule parameters')
