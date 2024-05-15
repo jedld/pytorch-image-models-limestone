@@ -210,6 +210,9 @@ group.add_argument('--layer-decay', type=float, default=None,
                    help='layer-wise learning rate decay (default: None)')
 group.add_argument('--opt-kwargs', nargs='*', default={}, action=utils.ParseKwargs)
 
+group.add_argument('--limestone-beta', type=float, default=0.2,
+                   help='Beta for limestone selector criterion')
+
 # Learning rate schedule parameters
 group = parser.add_argument_group('Learning rate schedule parameters')
 group.add_argument('--sched', type=str, default='cosine', metavar='SCHEDULER',
@@ -799,7 +802,9 @@ def main():
 
     if isinstance(model, Limestone):
         # Limestone model has a custom loss function
-        selector_criterion = SelectorCriterion(model, train_loss_fn, wandb=wandb).to(device=device)
+        selector_criterion = SelectorCriterion(model, train_loss_fn, 
+                                                beta=args.limestone_beta,
+                                                wandb=wandb).to(device=device)
         train_loss_fn = selector_criterion
     else:
         selector_criterion = None
