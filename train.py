@@ -492,6 +492,7 @@ def main():
         bn_eps=args.bn_eps,
         scriptable=args.torchscript,
         checkpoint_path=args.initial_checkpoint,
+        pretrained_strict=False,
         **factory_kwargs,
         **args.model_kwargs,
     )
