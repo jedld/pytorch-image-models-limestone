@@ -218,6 +218,10 @@ group.add_argument('--limestone-cooldown-epochs', type=int, default=10,
                    help='Cooldown epochs for limestone selector criterion')
 group.add_argument('--limestone-freeze', action='store_true', default=False,
                    help='Freeze limestone selector criterion')
+group.add_argument('--limestone-prune', action='store_true', default=False,
+                   help='Prune limestone model')
+group.add_argument('--limestone-discretize', action='store_true', default=False,
+                   help='Discretize limestone model')
 
 # Learning rate schedule parameters
 group = parser.add_argument_group('Learning rate schedule parameters')
@@ -518,7 +522,8 @@ def main():
             weight_parameters, selector_parameters = model.parameters()
             weight_parameters = weight_parameters['params']
             selector_parameters = selector_parameters['params']
-            _logger.info(f'Model: {safe_model_name(args.model)} created, param count:{sum([m.numel() for m in weight_parameters])} selectors {sum([m.numel() for m in selector_parameters])}')
+            active_selectors, _, _ = model.active_selectors()
+            _logger.info(f'Model: {safe_model_name(args.model)} created, active selector: {active_selectors}, param count:{sum([m.numel() for m in weight_parameters])} selectors {sum([m.numel() for m in selector_parameters])}')
         else:
             _logger.info(
                 f'Model {safe_model_name(args.model)} created, param count:{sum([m.numel() for m in model.parameters()])}')
@@ -536,8 +541,17 @@ def main():
         assert num_aug_splits > 1 or args.resplit
         model = convert_splitbn_model(model, max(num_aug_splits, 2))
 
+
+
     # move model to GPU, enable channels last layout if set
     model.to(device=device)
+
+        # if limestone pruning
+    if args.limestone_prune:
+        summary(model, (3, 224, 224))
+        print('Pruning limestone model')
+        model = model.prune()
+        print('Pruning done.')
 
     summary(model, (3, 224, 224))
     if args.channels_last:
