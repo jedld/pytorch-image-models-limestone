@@ -553,6 +553,11 @@ def main():
         model = model.prune()
         print('Pruning done.')
 
+    if args.limestone_discretize:
+        print('Discretizing limestone model')
+        model.discretize()
+        print('Discretizing done.')
+
     summary(model, (3, 224, 224))
     if args.channels_last:
         model.to(memory_format=torch.channels_last)
